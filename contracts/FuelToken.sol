@@ -39,8 +39,8 @@ contract FuelToken is ERC20, Ownable {
     }
 
     function burn(address _from, uint256 _amount) external {
-        require(allowance(_from, _msgSender()) >= _amount, "not enough allowance");
         require(isBurner(_msgSender()), "caller is not burner");
+        require(allowance(_from, _msgSender()) >= _amount, "not enough allowance");
         _burn(_from, _amount);
     }
 
