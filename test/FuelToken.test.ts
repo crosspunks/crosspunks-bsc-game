@@ -2,6 +2,9 @@ import { ADDRESS_ZERO, advanceBlock, advanceBlockTo, deploy, getBigNumber, prepa
 import { assert, expect } from "chai"
 import { ethers, waffle } from "hardhat"
 
+const MINTER_ROLE = "0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6";
+const BURNER_ROLE = "0x3c11d16cbaffd01df69ce1c404f6340ee057498f5f00246190ea54220576a848";
+
 describe("Fuel token tests", function () {
 
   const name = "Fuel Token";
@@ -28,14 +31,9 @@ describe("Fuel token tests", function () {
 
     describe("Mint tests", function () {
 
-      it("should correct add minter", async function () {
-        await this.fuel.addMinter(alice.address);
-        expect(await this.fuel.isMinter(alice.address)).to.be.true;
-      });
-
       it("should correct mint by minter", async function () {
         const amountToMint = ethers.utils.parseEther('100');
-        await this.fuel.addMinter(alice.address);
+        await this.fuel.grantRole(MINTER_ROLE, alice.address);
         const totalSupplyBefore = await this.fuel.totalSupply();
         const balanceBefore = await this.fuel.balanceOf(bob.address);
         await this.fuel.connect(alice).mint(bob.address, amountToMint);
@@ -44,14 +42,6 @@ describe("Fuel token tests", function () {
 
         expect(totalSupplyAfter.sub(totalSupplyBefore)).to.be.equal(amountToMint);
         expect(balanceAfter.sub(balanceBefore)).to.be.equal(amountToMint);
-      });
-
-      it("should correct remove minter", async function () {
-        await this.fuel.addMinter(alice.address);
-        await this.fuel.removeMinter(alice.address);
-        expect(await this.fuel.isMinter(alice.address)).to.be.false;
-        await expect(this.fuel.connect(alice).mint(bob.address, ethers.utils.parseEther('100'))).to.be.revertedWith("caller is not minter");
-
       });
 
       it("shouldnt mint if not minter", async function () {
@@ -64,18 +54,13 @@ describe("Fuel token tests", function () {
       const amountToMint = ethers.utils.parseEther('100');
 
       beforeEach("mint tokens", async function () {
-        await this.fuel.addMinter(alice.address);
+        await this.fuel.grantRole(MINTER_ROLE, alice.address);
         await this.fuel.connect(alice).mint(bob.address, amountToMint);
-      });
-
-      it("should correct add burner", async function () {
-        await this.fuel.addBurner(alice.address);
-        expect(await this.fuel.isBurner(alice.address)).to.be.true;
       });
 
       it("should correct burn by burner", async function () {
         const amountToBurn = ethers.utils.parseEther('20');
-        await this.fuel.addBurner(alice.address);
+        await this.fuel.grantRole(BURNER_ROLE, alice.address);
         const totalSupplyBefore = await this.fuel.totalSupply();
         const balanceBefore = await this.fuel.balanceOf(bob.address);
         await this.fuel.connect(bob).approve(alice.address, amountToBurn);
@@ -87,19 +72,12 @@ describe("Fuel token tests", function () {
         expect(balanceBefore.sub(balanceAfter)).to.be.equal(amountToBurn);
       });
 
-      it("should correct remove burner", async function () {
-        await this.fuel.addBurner(alice.address);
-        await this.fuel.removeBurner(alice.address);
-        expect(await this.fuel.isBurner(alice.address)).to.be.false;
-        await expect(this.fuel.connect(alice).burn(bob.address, ethers.utils.parseEther('20'))).to.be.revertedWith("caller is not burner");
-      });
-
       it("shouldnt burn if not burner", async function () {
         await expect(this.fuel.connect(bob).burn(alice.address, ethers.utils.parseEther('20'))).to.be.revertedWith("caller is not burner");
       });
 
       it("shouldnt burn if not approved", async function () {
-        await this.fuel.addBurner(alice.address);
+        await this.fuel.grantRole(BURNER_ROLE, alice.address);
         await expect(this.fuel.connect(alice).burn(alice.address, ethers.utils.parseEther('20'))).to.be.revertedWith("not enough allowance");
       });
       
