@@ -55,8 +55,6 @@ contract Staking is Ownable {
     }
     // The SUSHI TOKEN!
     FuelToken public sushi;
-    // Dev address.
-    address public devaddr;
     // Block number when bonus SUSHI period ends.
     uint256 public bonusEndBlock;
     // SUSHI tokens created per block.
@@ -83,13 +81,11 @@ contract Staking is Ownable {
 
     constructor(
         FuelToken _sushi,
-        address _devaddr,
         uint256 _sushiPerBlock,
         uint256 _startBlock,
         uint256 _bonusEndBlock
     ) public {
         sushi = _sushi;
-        devaddr = _devaddr;
         sushiPerBlock = _sushiPerBlock;
         bonusEndBlock = _bonusEndBlock;
         startBlock = _startBlock;
@@ -210,7 +206,6 @@ contract Staking is Ownable {
         uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
         uint256 sushiReward =
             multiplier * sushiPerBlock * pool.allocPoint / totalAllocPoint;
-        sushi.mint(devaddr, sushiReward / 10);
         sushi.mint(address(this), sushiReward);
         pool.accSushiPerShare += sushiReward * 1e12 / lpSupply;
         pool.lastRewardBlock = block.number;
@@ -271,9 +266,4 @@ contract Staking is Ownable {
         }
     }
 
-    // Update dev address by the previous dev.
-    function dev(address _devaddr) public {
-        require(msg.sender == devaddr, "dev: wut?");
-        devaddr = _devaddr;
-    }
 }
