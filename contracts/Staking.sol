@@ -35,7 +35,6 @@ contract Staking is Ownable {
     }
     // Info of each pool.
     struct PoolInfo {
-        IERC20 lpToken; // Address of LP token contract.
         uint128 accSushiPerShare; // Accumulated SUSHIs per share, times 1e12. See below.
         uint64 lastRewardBlock; // Last block number that SUSHIs distribution occurs.
         uint64 allocPoint; // How many allocation points assigned to this pool. SUSHIs to distribute per block.
@@ -50,6 +49,8 @@ contract Staking is Ownable {
     uint256 public constant BONUS_MULTIPLIER = 10;
     // Info of each pool.
     PoolInfo[] public poolInfo;
+    // Addresses of LP token contract.
+    IERC20[] lpToken; 
     // Info of each user that stakes LP tokens.
     mapping(uint256 => mapping(address => UserInfo)) public userInfo;
     // Total allocation poitns. Must be the sum of all allocation points in all pools.
@@ -96,12 +97,12 @@ contract Staking is Ownable {
         totalAllocPoint = totalAllocPoint + _allocPoint;
         poolInfo.push(
             PoolInfo({
-                lpToken: _lpToken,
                 accSushiPerShare: 0,
                 lastRewardBlock: uint64(lastRewardBlock),
                 allocPoint: uint64(_allocPoint)
             })
         );
+        lpToken.push(_lpToken);
     }
 
     // Update the given pool's SUSHI allocation point. Can only be called by the owner.
@@ -117,14 +118,14 @@ contract Staking is Ownable {
         poolInfo[_pid].allocPoint = _allocPoint;
     }
 
-    function changeStakeToken(uint256 _pid, IERC20 _newTokenAddress) public onlyOwner {
-        require(address(_newTokenAddress) != address(0), "newTokenAddress is zero");
+    function changeStakeToken(uint256 _pid, IERC20 _newToken) public onlyOwner {
+        require(address(_newToken) != address(0), "newTokenAddress is zero");
         emit TokenChanged(
             _pid, 
-            address(poolInfo[_pid].lpToken), 
-            address(_newTokenAddress)
+            address(lpToken[_pid]), 
+            address(_newToken)
         );
-        poolInfo[_pid].lpToken = _newTokenAddress;
+        lpToken[_pid] = _newToken;
     }
 
     // Return reward multiplier over the given _from to _to block.
@@ -152,7 +153,7 @@ contract Staking is Ownable {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
         uint256 accSushiPerShare = pool.accSushiPerShare;
-        uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+        uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
             uint256 multiplier =
                 getMultiplier(pool.lastRewardBlock, block.number);
@@ -177,7 +178,7 @@ contract Staking is Ownable {
         if (block.number <= pool.lastRewardBlock) {
             return;
         }
-        uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+        uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
         if (lpSupply == 0) {
             pool.lastRewardBlock = uint64(block.number);
             return;
@@ -200,7 +201,7 @@ contract Staking is Ownable {
                 user.amount * pool.accSushiPerShare / 1e12 - user.rewardDebt;
             safeSushiTransfer(msg.sender, pending);
         }
-        pool.lpToken.safeTransferFrom(
+        lpToken[_pid].safeTransferFrom(
             address(msg.sender),
             address(this),
             _amount
@@ -221,7 +222,7 @@ contract Staking is Ownable {
         safeSushiTransfer(msg.sender, pending);
         user.amount -= _amount;
         user.rewardDebt = user.amount * pool.accSushiPerShare / 1e12;
-        pool.lpToken.safeTransfer(address(msg.sender), _amount);
+        lpToken[_pid].safeTransfer(address(msg.sender), _amount);
         emit Withdraw(msg.sender, _pid, _amount);
     }
 
@@ -229,7 +230,7 @@ contract Staking is Ownable {
     function emergencyWithdraw(uint256 _pid) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
-        pool.lpToken.safeTransfer(address(msg.sender), user.amount);
+        lpToken[_pid].safeTransfer(address(msg.sender), user.amount);
         emit EmergencyWithdraw(msg.sender, _pid, user.amount);
         user.amount = 0;
         user.rewardDebt = 0;
