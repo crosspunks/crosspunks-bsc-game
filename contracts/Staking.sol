@@ -36,9 +36,9 @@ contract Staking is Ownable {
     // Info of each pool.
     struct PoolInfo {
         IERC20 lpToken; // Address of LP token contract.
-        uint256 allocPoint; // How many allocation points assigned to this pool. SUSHIs to distribute per block.
-        uint256 lastRewardBlock; // Last block number that SUSHIs distribution occurs.
-        uint256 accSushiPerShare; // Accumulated SUSHIs per share, times 1e12. See below.
+        uint128 accSushiPerShare; // Accumulated SUSHIs per share, times 1e12. See below.
+        uint64 lastRewardBlock; // Last block number that SUSHIs distribution occurs.
+        uint64 allocPoint; // How many allocation points assigned to this pool. SUSHIs to distribute per block.
     }
     // The SUSHI TOKEN!
     FuelToken public sushi;
@@ -97,9 +97,9 @@ contract Staking is Ownable {
         poolInfo.push(
             PoolInfo({
                 lpToken: _lpToken,
-                allocPoint: _allocPoint,
-                lastRewardBlock: lastRewardBlock,
-                accSushiPerShare: 0
+                accSushiPerShare: 0,
+                lastRewardBlock: uint64(lastRewardBlock),
+                allocPoint: uint64(_allocPoint)
             })
         );
     }
@@ -107,7 +107,7 @@ contract Staking is Ownable {
     // Update the given pool's SUSHI allocation point. Can only be called by the owner.
     function set(
         uint256 _pid,
-        uint256 _allocPoint,
+        uint64 _allocPoint,
         bool _withUpdate
     ) public onlyOwner {
         if (_withUpdate) {
@@ -119,7 +119,11 @@ contract Staking is Ownable {
 
     function changeStakeToken(uint256 _pid, IERC20 _newTokenAddress) public onlyOwner {
         require(address(_newTokenAddress) != address(0), "newTokenAddress is zero");
-        emit TokenChanged(_pid, address(poolInfo[_pid].lpToken), address(_newTokenAddress));
+        emit TokenChanged(
+            _pid, 
+            address(poolInfo[_pid].lpToken), 
+            address(_newTokenAddress)
+        );
         poolInfo[_pid].lpToken = _newTokenAddress;
     }
 
@@ -175,15 +179,15 @@ contract Staking is Ownable {
         }
         uint256 lpSupply = pool.lpToken.balanceOf(address(this));
         if (lpSupply == 0) {
-            pool.lastRewardBlock = block.number;
+            pool.lastRewardBlock = uint64(block.number);
             return;
         }
         uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
         uint256 sushiReward =
             multiplier * sushiPerBlock * pool.allocPoint / totalAllocPoint;
         sushi.mint(address(this), sushiReward);
-        pool.accSushiPerShare += sushiReward * 1e12 / lpSupply;
-        pool.lastRewardBlock = block.number;
+        pool.accSushiPerShare += uint128(sushiReward * 1e12 / lpSupply);
+        pool.lastRewardBlock = uint64(block.number);
     }
 
     // Deposit LP tokens to MasterChef for SUSHI allocation.
