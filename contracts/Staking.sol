@@ -8,44 +8,26 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./FuelToken.sol";
 
-// MasterChef is the master of Sushi. He can make Sushi and he is a fair guy.
-//
-// Note that it's ownable and the owner wields tremendous power. The ownership
-// will be transferred to a governance smart contract once SUSHI is sufficiently
-// distributed and the community can show to govern itself.
-//
-// Have fun reading it. Hopefully it's bug-free. God bless.
 contract Staking is Ownable {
     using SafeERC20 for IERC20;
     // Info of each user.
     struct UserInfo {
         uint256 amount; // How many LP tokens the user has provided.
-        uint256 rewardDebt; // Reward debt. See explanation below.
-        //
-        // We do some fancy math here. Basically, any point in time, the amount of SUSHIs
-        // entitled to a user but is pending to be distributed is:
-        //
-        //   pending reward = (user.amount * pool.accSushiPerShare) - user.rewardDebt
-        //
-        // Whenever a user deposits or withdraws LP tokens to a pool. Here's what happens:
-        //   1. The pool's `accSushiPerShare` (and `lastRewardBlock`) gets updated.
-        //   2. User receives the pending reward sent to his/her address.
-        //   3. User's `amount` gets updated.
-        //   4. User's `rewardDebt` gets updated.
+        uint256 rewardDebt; // Reward debt.
     }
     // Info of each pool.
     struct PoolInfo {
-        uint128 accSushiPerShare; // Accumulated SUSHIs per share, times 1e12. See below.
-        uint64 lastRewardBlock; // Last block number that SUSHIs distribution occurs.
-        uint64 allocPoint; // How many allocation points assigned to this pool. SUSHIs to distribute per block.
+        uint128 accRewardPerShare; // Accumulated reward per share, times 1e12. See below.
+        uint64 lastRewardBlock; // Last block number that reward distribution occurs.
+        uint64 allocPoint; // How many allocation points assigned to this pool. Reward to distribute per block.
     }
-    // The SUSHI TOKEN!
-    FuelToken public sushi;
-    // Block number when bonus SUSHI period ends.
+    // The reward token!
+    FuelToken public rewardToken;
+    // Block number when bonus reward period ends.
     uint256 public bonusEndBlock;
-    // SUSHI tokens created per block.
-    uint256 public sushiPerBlock;
-    // Bonus muliplier for early sushi makers.
+    // Reward tokens created per block.
+    uint256 public rewardPerBlock;
+    // Bonus muliplier for early stakers.
     uint256 public constant BONUS_MULTIPLIER = 10;
     // Info of each pool.
     PoolInfo[] public poolInfo;
@@ -55,7 +37,7 @@ contract Staking is Ownable {
     mapping(uint256 => mapping(address => UserInfo)) public userInfo;
     // Total allocation poitns. Must be the sum of all allocation points in all pools.
     uint256 public totalAllocPoint = 0;
-    // The block number when SUSHI mining starts.
+    // The block number when reward mining starts.
     uint256 public startBlock;
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
@@ -67,13 +49,13 @@ contract Staking is Ownable {
     event TokenChanged(uint256 pid, address oldTokenAddress, address newTokenAddress);
 
     constructor(
-        FuelToken _sushi,
-        uint256 _sushiPerBlock,
+        FuelToken _rewardToken,
+        uint256 _rewardPerBlock,
         uint256 _startBlock,
         uint256 _bonusEndBlock
     ) public {
-        sushi = _sushi;
-        sushiPerBlock = _sushiPerBlock;
+        rewardToken = _rewardToken;
+        rewardPerBlock = _rewardPerBlock;
         bonusEndBlock = _bonusEndBlock;
         startBlock = _startBlock;
     }
@@ -97,7 +79,7 @@ contract Staking is Ownable {
         totalAllocPoint = totalAllocPoint + _allocPoint;
         poolInfo.push(
             PoolInfo({
-                accSushiPerShare: 0,
+                accRewardPerShare: 0,
                 lastRewardBlock: uint64(lastRewardBlock),
                 allocPoint: uint64(_allocPoint)
             })
@@ -105,7 +87,7 @@ contract Staking is Ownable {
         lpToken.push(_lpToken);
     }
 
-    // Update the given pool's SUSHI allocation point. Can only be called by the owner.
+    // Update the given pool's reward allocation point. Can only be called by the owner.
     function set(
         uint256 _pid,
         uint64 _allocPoint,
@@ -144,24 +126,24 @@ contract Staking is Ownable {
         }
     }
 
-    // View function to see pending SUSHIs on frontend.
-    function pendingSushi(uint256 _pid, address _user)
+    // View function to see pending reward on frontend.
+    function pendingReward(uint256 _pid, address _user)
         external
         view
         returns (uint256)
     {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
-        uint256 accSushiPerShare = pool.accSushiPerShare;
+        uint256 accRewardPerShare = pool.accRewardPerShare;
         uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
             uint256 multiplier =
                 getMultiplier(pool.lastRewardBlock, block.number);
-            uint256 sushiReward =
-                multiplier * sushiPerBlock * pool.allocPoint / totalAllocPoint;
-            accSushiPerShare += sushiReward * 1e12 / lpSupply;
+            uint256 reward =
+                multiplier * rewardPerBlock * pool.allocPoint / totalAllocPoint;
+            accRewardPerShare += reward * 1e12 / lpSupply;
         }
-        return user.amount * accSushiPerShare / 1e12 - user.rewardDebt;
+        return user.amount * accRewardPerShare / 1e12 - user.rewardDebt;
     }
 
     // Update reward vairables for all pools. Be careful of gas spending!
@@ -184,22 +166,22 @@ contract Staking is Ownable {
             return;
         }
         uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
-        uint256 sushiReward =
-            multiplier * sushiPerBlock * pool.allocPoint / totalAllocPoint;
-        sushi.mint(address(this), sushiReward);
-        pool.accSushiPerShare += uint128(sushiReward * 1e12 / lpSupply);
+        uint256 reward =
+            multiplier * rewardPerBlock * pool.allocPoint / totalAllocPoint;
+        rewardToken.mint(address(this), reward);
+        pool.accRewardPerShare += uint128(reward * 1e12 / lpSupply);
         pool.lastRewardBlock = uint64(block.number);
     }
 
-    // Deposit LP tokens to MasterChef for SUSHI allocation.
+    // Deposit LP tokens to MasterChef for reward allocation.
     function deposit(uint256 _pid, uint256 _amount) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         updatePool(_pid);
         if (user.amount > 0) {
             uint256 pending =
-                user.amount * pool.accSushiPerShare / 1e12 - user.rewardDebt;
-            safeSushiTransfer(msg.sender, pending);
+                user.amount * pool.accRewardPerShare / 1e12 - user.rewardDebt;
+            safeRewardTransfer(msg.sender, pending);
         }
         lpToken[_pid].safeTransferFrom(
             address(msg.sender),
@@ -207,7 +189,7 @@ contract Staking is Ownable {
             _amount
         );
         user.amount += _amount;
-        user.rewardDebt = user.amount * pool.accSushiPerShare / 1e12;
+        user.rewardDebt = user.amount * pool.accRewardPerShare / 1e12;
         emit Deposit(msg.sender, _pid, _amount);
     }
 
@@ -218,10 +200,10 @@ contract Staking is Ownable {
         require(user.amount >= _amount, "withdraw: not good");
         updatePool(_pid);
         uint256 pending =
-            user.amount * pool.accSushiPerShare / 1e12 - user.rewardDebt;
-        safeSushiTransfer(msg.sender, pending);
+            user.amount * pool.accRewardPerShare / 1e12 - user.rewardDebt;
+        safeRewardTransfer(msg.sender, pending);
         user.amount -= _amount;
-        user.rewardDebt = user.amount * pool.accSushiPerShare / 1e12;
+        user.rewardDebt = user.amount * pool.accRewardPerShare / 1e12;
         lpToken[_pid].safeTransfer(address(msg.sender), _amount);
         emit Withdraw(msg.sender, _pid, _amount);
     }
@@ -236,13 +218,13 @@ contract Staking is Ownable {
         user.rewardDebt = 0;
     }
 
-    // Safe sushi transfer function, just in case if rounding error causes pool to not have enough SUSHIs.
-    function safeSushiTransfer(address _to, uint256 _amount) internal {
-        uint256 sushiBal = sushi.balanceOf(address(this));
-        if (_amount > sushiBal) {
-            sushi.transfer(_to, sushiBal);
+    // Safe reward transfer function, just in case if rounding error causes pool to not have enough reward tokens.
+    function safeRewardTransfer(address _to, uint256 _amount) internal {
+        uint256 rewardBal = rewardToken.balanceOf(address(this));
+        if (_amount > rewardBal) {
+            rewardToken.transfer(_to, rewardBal);
         } else {
-            sushi.transfer(_to, _amount);
+            rewardToken.transfer(_to, _amount);
         }
     }
 
