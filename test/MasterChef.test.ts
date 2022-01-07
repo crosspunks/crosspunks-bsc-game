@@ -37,23 +37,23 @@ describe("Staking", function () {
   })
 
 
-  context("With ERC/LP token added to the field", function () {
+  context("With ERC token added to the field", function () {
     beforeEach(async function () {
-      this.lp = await this.ERC20Mock.deploy("LPToken", "LP", "10000000000")
+      this.stakeToken = await this.ERC20Mock.deploy("Stake Token", "ST", "10000000000")
 
-      await this.lp.transfer(this.alice.address, "1000")
+      await this.stakeToken.transfer(this.alice.address, "1000")
 
-      await this.lp.transfer(this.bob.address, "1000")
+      await this.stakeToken.transfer(this.bob.address, "1000")
 
-      await this.lp.transfer(this.carol.address, "1000")
+      await this.stakeToken.transfer(this.carol.address, "1000")
 
-      this.lp2 = await this.ERC20Mock.deploy("LPToken2", "LP2", "10000000000")
+      this.stakeToken2 = await this.ERC20Mock.deploy("Stake Token 2", "ST2", "10000000000")
 
-      await this.lp2.transfer(this.alice.address, "1000")
+      await this.stakeToken2.transfer(this.alice.address, "1000")
 
-      await this.lp2.transfer(this.bob.address, "1000")
+      await this.stakeToken2.transfer(this.bob.address, "1000")
 
-      await this.lp2.transfer(this.carol.address, "1000")
+      await this.stakeToken2.transfer(this.carol.address, "1000")
     })
 
     it("should allow emergency withdraw", async function () {
@@ -61,17 +61,17 @@ describe("Staking", function () {
       this.staking = await this.Staking.deploy(this.fuel.address, "100", "100", "1000")
       await this.staking.deployed()
 
-      await this.staking.add("100", this.lp.address, true)
+      await this.staking.add("100", this.stakeToken.address, true)
 
-      await this.lp.connect(this.bob).approve(this.staking.address, "1000")
+      await this.stakeToken.connect(this.bob).approve(this.staking.address, "1000")
 
       await this.staking.connect(this.bob).deposit(0, "100")
 
-      expect(await this.lp.balanceOf(this.bob.address)).to.equal("900")
+      expect(await this.stakeToken.balanceOf(this.bob.address)).to.equal("900")
 
       await this.staking.connect(this.bob).emergencyWithdraw(0)
 
-      expect(await this.lp.balanceOf(this.bob.address)).to.equal("1000")
+      expect(await this.stakeToken.balanceOf(this.bob.address)).to.equal("1000")
     })
 
     it("should give out reward only after farming time", async function () {
@@ -83,9 +83,9 @@ describe("Staking", function () {
       await this.fuel.grantRole(MINTER_ROLE, this.staking.address)
 
 
-      await this.staking.add("100", this.lp.address, true)
+      await this.staking.add("100", this.stakeToken.address, true)
 
-      await this.lp.connect(this.bob).approve(this.staking.address, "1000")
+      await this.stakeToken.connect(this.bob).approve(this.staking.address, "1000")
       await this.staking.connect(this.bob).deposit(0, "100")
       await advanceBlockTo("89")
 
@@ -119,8 +119,8 @@ describe("Staking", function () {
     //   await this.fuel.transferOwnership(this.staking.address)
       await this.fuel.grantRole(MINTER_ROLE, this.staking.address)
 
-      await this.staking.add("100", this.lp.address, true)
-      await this.lp.connect(this.bob).approve(this.staking.address, "1000")
+      await this.staking.add("100", this.stakeToken.address, true)
+      await this.stakeToken.connect(this.bob).approve(this.staking.address, "1000")
       await advanceBlockTo("199")
       expect(await this.fuel.totalSupply()).to.equal("0")
       await advanceBlockTo("204")
@@ -130,13 +130,13 @@ describe("Staking", function () {
       expect(await this.fuel.totalSupply()).to.equal("0")
       expect(await this.fuel.balanceOf(this.bob.address)).to.equal("0")
     //   expect(await this.fuel.balanceOf(this.dev.address)).to.equal("0")
-      expect(await this.lp.balanceOf(this.bob.address)).to.equal("990")
+      expect(await this.stakeToken.balanceOf(this.bob.address)).to.equal("990")
       await advanceBlockTo("219")
       await this.staking.connect(this.bob).withdraw(0, "10") // block 220
       expect(await this.fuel.totalSupply()).to.equal("10000")
       expect(await this.fuel.balanceOf(this.bob.address)).to.equal("10000")
     //   expect(await this.fuel.balanceOf(this.dev.address)).to.equal("1000")
-      expect(await this.lp.balanceOf(this.bob.address)).to.equal("1000")
+      expect(await this.stakeToken.balanceOf(this.bob.address)).to.equal("1000")
     })
 
     it("should distribute reward properly for each staker", async function () {
@@ -146,14 +146,14 @@ describe("Staking", function () {
     //   await this.fuel.transferOwnership(this.staking.address)
       await this.fuel.grantRole(MINTER_ROLE, this.staking.address)
 
-      await this.staking.add("100", this.lp.address, true)
-      await this.lp.connect(this.alice).approve(this.staking.address, "1000", {
+      await this.staking.add("100", this.stakeToken.address, true)
+      await this.stakeToken.connect(this.alice).approve(this.staking.address, "1000", {
         from: this.alice.address,
       })
-      await this.lp.connect(this.bob).approve(this.staking.address, "1000", {
+      await this.stakeToken.connect(this.bob).approve(this.staking.address, "1000", {
         from: this.bob.address,
       })
-      await this.lp.connect(this.carol).approve(this.staking.address, "1000", {
+      await this.stakeToken.connect(this.carol).approve(this.staking.address, "1000", {
         from: this.carol.address,
       })
       // Alice deposits 10 LPs at block 310
@@ -204,9 +204,9 @@ describe("Staking", function () {
       // Carol should have: 2*3/6*1000 + 10*3/7*1000 + 10*3/6.5*1000 + 10*3/4.5*1000 + 10*1000 = 26568
       expect(await this.fuel.balanceOf(this.carol.address)).to.equal("26568")
       // All of them should have 1000 LPs back.
-      expect(await this.lp.balanceOf(this.alice.address)).to.equal("1000")
-      expect(await this.lp.balanceOf(this.bob.address)).to.equal("1000")
-      expect(await this.lp.balanceOf(this.carol.address)).to.equal("1000")
+      expect(await this.stakeToken.balanceOf(this.alice.address)).to.equal("1000")
+      expect(await this.stakeToken.balanceOf(this.bob.address)).to.equal("1000")
+      expect(await this.stakeToken.balanceOf(this.carol.address)).to.equal("1000")
     })
 
     it("should give proper reward allocation to each pool", async function () {
@@ -215,16 +215,16 @@ describe("Staking", function () {
     //   await this.fuel.transferOwnership(this.staking.address)
       await this.fuel.grantRole(MINTER_ROLE, this.staking.address)
 
-      await this.lp.connect(this.alice).approve(this.staking.address, "1000", { from: this.alice.address })
-      await this.lp2.connect(this.bob).approve(this.staking.address, "1000", { from: this.bob.address })
+      await this.stakeToken.connect(this.alice).approve(this.staking.address, "1000", { from: this.alice.address })
+      await this.stakeToken2.connect(this.bob).approve(this.staking.address, "1000", { from: this.bob.address })
       // Add first LP to the pool with allocation 1
-      await this.staking.add("10", this.lp.address, true)
+      await this.staking.add("10", this.stakeToken.address, true)
       // Alice deposits 10 LPs at block 410
       await advanceBlockTo("409")
       await this.staking.connect(this.alice).deposit(0, "10", { from: this.alice.address })
       // Add LP2 to the pool with allocation 2 at block 420
       await advanceBlockTo("419")
-      await this.staking.add("20", this.lp2.address, true)
+      await this.staking.add("20", this.stakeToken2.address, true)
       // Alice should have 10*1000 pending reward
       expect(await this.staking.pendingReward(0, this.alice.address)).to.equal("10000")
       // Bob deposits 10 LP2s at block 425
@@ -244,8 +244,8 @@ describe("Staking", function () {
     //   await this.fuel.transferOwnership(this.staking.address)
       await this.fuel.grantRole(MINTER_ROLE, this.staking.address)
 
-      await this.lp.connect(this.alice).approve(this.staking.address, "1000", { from: this.alice.address })
-      await this.staking.add("1", this.lp.address, true)
+      await this.stakeToken.connect(this.alice).approve(this.staking.address, "1000", { from: this.alice.address })
+      await this.staking.add("1", this.stakeToken.address, true)
       // Alice deposits 10 LPs at block 590
       await advanceBlockTo("589")
       await this.staking.connect(this.alice).deposit(0, "10", { from: this.alice.address })
