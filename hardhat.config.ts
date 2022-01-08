@@ -307,6 +307,7 @@ const config: HardhatUserConfig = {
       saveDeployments: true,
     },
   },
+  
   paths: {
     artifacts: "artifacts",
     cache: "cache",
@@ -316,6 +317,7 @@ const config: HardhatUserConfig = {
     sources: "contracts",
     tests: "test",
   },
+  
   preprocess: {
     eachLine: removeConsoleLog((bre) => bre.network.name !== "hardhat" && bre.network.name !== "localhost"),
   },

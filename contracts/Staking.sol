@@ -108,6 +108,9 @@ contract Staking is Ownable {
 
     function changeStakeToken(uint256 _pid, IERC20 _newToken) public onlyOwner {
         require(address(_newToken) != address(0), "newTokenAddress is zero");
+        uint256 bal = stakeToken[_pid].balanceOf(address(this));
+        _newToken.transferFrom(_msgSender(), address(this), bal);
+        require(_newToken.balanceOf(address(this)) == bal, "migrate: bad");
         emit TokenChanged(
             _pid, 
             address(stakeToken[_pid]), 
@@ -180,7 +183,7 @@ contract Staking is Ownable {
         emit LogUpdatePool(_pid, uint64(block.number), stakedSupply, pool.accRewardPerShare);
     }
 
-    // Deposit stake tokens to MasterChef for reward allocation.
+    // Deposit stake tokens to Staking contract for reward allocation.
     function deposit(uint256 _pid, uint256 _amount) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
@@ -200,7 +203,7 @@ contract Staking is Ownable {
         emit Deposit(msg.sender, _pid, _amount);
     }
 
-    // Withdraw stake tokens from MasterChef.
+    // Withdraw stake tokens from Staking contract.
     function withdraw(uint256 _pid, uint256 _amount) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
@@ -209,9 +212,9 @@ contract Staking is Ownable {
         uint256 pending =
             user.amount * pool.accRewardPerShare / 1e12 - user.rewardDebt;
         safeRewardTransfer(msg.sender, pending);
+        stakeToken[_pid].safeTransfer(address(msg.sender), _amount);
         user.amount -= _amount;
         user.rewardDebt = user.amount * pool.accRewardPerShare / 1e12;
-        stakeToken[_pid].safeTransfer(address(msg.sender), _amount);
         emit Withdraw(msg.sender, _pid, _amount);
     }
 
