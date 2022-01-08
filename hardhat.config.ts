@@ -8,10 +8,7 @@ import "hardhat-abi-exporter"
 import "hardhat-deploy"
 import "hardhat-deploy-ethers"
 import "hardhat-gas-reporter"
-import "hardhat-spdx-license-identifier"
-import "hardhat-watcher"
 import "solidity-coverage"
-import "./tasks"
 
 import { HardhatUserConfig } from "hardhat/types"
 import { removeConsoleLog } from "hardhat-preprocessor"
@@ -334,17 +331,7 @@ const config: HardhatUserConfig = {
       },
     ],
   },
-  spdxLicenseIdentifier: {
-    overwrite: false,
-    runOnCompile: true,
-  },
-  watcher: {
-    compile: {
-      tasks: ["compile"],
-      files: ["./contracts"],
-      verbose: true,
-    },
-  },
+
 }
 
 
