@@ -28,7 +28,7 @@ const config: HardhatUserConfig = {
   },
   defaultNetwork: "hardhat",
   etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY,
+    apiKey: process.env.ETHERSCAN_API_KEY
   },
   gasReporter: {
     coinmarketcap: process.env.COINMARKETCAP_API_KEY,
@@ -169,7 +169,7 @@ const config: HardhatUserConfig = {
       saveDeployments: true,
     },
     "bsc-testnet": {
-      url: "https://data-seed-prebsc-2-s3.binance.org:8545",
+      url: "https://data-seed-prebsc-1-s1.binance.org:8545",
       accounts,
       chainId: 97,
       live: true,
