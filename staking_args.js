@@ -6,7 +6,7 @@ const {
 } = require("./scripts/deploy.js");
 
 module.exports = [
-    "0x97C839d9EB4624368B39cAb153b2038e2c3a6A1F",
+    "0xF4d61DEa94EddA4A2b3b469AF4313f0D499C86C9",
     rewardPerBlock,
     startBlock,
     bonusEndBlock

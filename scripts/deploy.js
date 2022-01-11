@@ -5,9 +5,9 @@ const MINTER_ROLE = "0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981
 const name = "Fuel Token";
 const symbol = "FUEL";
 
-const rewardPerBlock = ethers.utils.parseEther("100");
-const startBlock = 1000;
-const bonusEndBlock = 1500;
+const rewardPerBlock = ethers.utils.parseEther("1000");
+const startBlock = 14264000;
+const bonusEndBlock = 14964000;
 
 async function main() {
 
